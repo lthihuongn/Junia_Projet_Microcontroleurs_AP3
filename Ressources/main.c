@@ -73,8 +73,8 @@ void select_channel(char channel) {
 // ad_read() : lance une conversion et retourne ADRESH
 // ------------------------------------------------------------------
 char ad_read(void) {
-    ADCON0 |= 0x02;           // ADGO = 1
-    while (ADCON0 & 0x02) {} // attend fin de conversion
+    ADCON0 |= 0x01;           // ADGO = 1
+    while (ADCON0 & 0x01) {} // attend fin de conversion
     return ADRESH;
 }
 
@@ -137,46 +137,28 @@ void fill_row(unsigned char row, char therm,
 // main()
 // ------------------------------------------------------------------
 void main(void) {
-    // RA2..RA5 en entrees analogiques
-    TRISA  = 0x3C;   // RA2,RA3,RA4,RA5 en entree
-    ANSELA = 0x3C;   // RA2..RA5 analogiques
+    TRISC &= ~(MASK_LED0|MASK_LED1|MASK_LED2|MASK_LED3|MASK_LED4|MASK_LED5|MASK_LED6);
+    //LATC  &= 0x80;
 
-    // LED de test RC1 en sortie
-    TRISC &= ~MASK_LED1;
+    TRISA  |= 0x20;
+    ANSELA |= 0x20;
 
-    // Configuration ADC
-    ADCON1 = 0b01100000;  // Fosc/64, Vref = AVdd/AVss
-    ADCON0 = 0b00000001;  // ADON=1, ADGO=0
+    ADCON1 = 0x00;
+    ADCON0 = 0b10010000;    // ADON=1, FRC, justifié gauche
 
-    char therm;
+    __delay_ms(100);
+    ADPCH = 0x05;
+    __delay_ms(100);
 
-    while (1) {
-        // ENV1 -> lignes 0 et 1 (rouge)
-        select_channel(CH_ENV1);
-        therm = get_thermometre(ad_read_max());
-        fill_row(0, therm, ENV1_R, ENV1_G, ENV1_B, ENV1_W);
-        fill_row(1, therm, ENV1_R, ENV1_G, ENV1_B, ENV1_W);
+    while(1) {
+        // Lance conversion
+        ADCON0 |= 0x01;
+        while (ADCON0 & 0x01) {}
 
-        // ENV2 -> lignes 2 et 3 (vert)
-        select_channel(CH_ENV2);
-        therm = get_thermometre(ad_read_max());
-        fill_row(2, therm, ENV2_R, ENV2_G, ENV2_B, ENV2_W);
-        fill_row(3, therm, ENV2_R, ENV2_G, ENV2_B, ENV2_W);
+        char val = ADRESH;
 
-        // ENV3 -> lignes 4 et 5 (bleu)
-        select_channel(CH_ENV3);
-        therm = get_thermometre(ad_read_max());
-        fill_row(4, therm, ENV3_R, ENV3_G, ENV3_B, ENV3_W);
-        fill_row(5, therm, ENV3_R, ENV3_G, ENV3_B, ENV3_W);
-
-        // ENV4 -> lignes 6 et 7 (blanc)
-        select_channel(CH_ENV4);
-        therm = get_thermometre(ad_read_max());
-        fill_row(6, therm, ENV4_R, ENV4_G, ENV4_B, ENV4_W);
-        fill_row(7, therm, ENV4_R, ENV4_G, ENV4_B, ENV4_W);
-
-        // Envoi vers la matrice LED
-        TX_64LEDS();
+        // Affiche directement sur LEDs
+        LATC = (LATC & 0x80) | (val & 0x7F);
 
         __delay_ms(50);
     }
