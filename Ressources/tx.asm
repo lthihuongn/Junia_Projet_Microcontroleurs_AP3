@@ -193,11 +193,6 @@ TX_1LED:
 ; _TX_64LEDS : envoie les 64 LEDs de LED_MATRIX
 ; =================================================================
 _TX_64LEDS:
-    ; --- Test : allume LED6 (RC6) pour verifier que la fonction est appelee ---
-    banksel TRISC
-    bcf     TRISC, 6        ; RC6 en sortie
-    banksel LATC
-    bsf     LATC, 6         ; RC6 = 1 -> LED6 allumee
 
     ; --- Configure RB5 (CMD_MATRIX) en sortie numerique ---
     banksel TRISB
