@@ -92,9 +92,9 @@ char ad_read_max(void) {
 
 // ------------------------------------------------------------------
 // get_thermometre() : Calcule le nombre de LEDs a allumer (0..8)
-//   Calibre experimentalement : signal au repos ~100, pic ~115
+//   Calibre experimentalement : signal au repos ~105, pic ~115
 // ------------------------------------------------------------------
-#define SEUIL_REPOS   100   // valeur ADC au repos (a ajuster si besoin)
+#define SEUIL_REPOS   105   // valeur ADC au repos (a ajuster si besoin)
 #define DIVISEUR_SENS  15   // plus petit = plus sensible
 
 char get_thermometre(char adc_val) {
