@@ -180,6 +180,54 @@ void fill_row_gradient(unsigned char row, char therm) {
 }
 
 // ------------------------------------------------------------------
+// PIXEL ART : La Baleine
+// Codes couleurs : 0=Eteint/Noir, 1=Bleu Foncé, 2=Bleu Clair, 3=Gris
+// ------------------------------------------------------------------
+const char image_baleine[64] = {
+    0, 1, 0, 1, 0, 0, 0, 0,  // Ligne 0 (haut)
+    1, 0, 1, 0, 1, 0, 0, 0,  // Ligne 1
+    0, 0, 1, 0, 0, 0, 0, 0,  // Ligne 2
+    0, 2, 2, 2, 0, 0, 2, 0,  // Ligne 3
+    2, 2, 0, 2, 2, 0, 2, 2,  // Ligne 4 (œil : 0 au milieu)
+    3, 3, 2, 2, 2, 0, 2, 0,  // Ligne 5
+    3, 3, 3, 2, 2, 2, 2, 0,  // Ligne 6
+    0, 3, 3, 3, 2, 2, 0, 0   // Ligne 7 (bas)
+};
+
+void draw_whale(void) {
+    for (int i = 0; i < 64; i++) {
+        int idx = i * 4; // 4 octets par LED (G, R, B, W)
+        
+        switch (image_baleine[i]) {
+            case 0: // Eteint (ou l'œil noir)
+                LED_MATRIX[idx + 0] = 0; 
+                LED_MATRIX[idx + 1] = 0; 
+                LED_MATRIX[idx + 2] = 0; 
+                LED_MATRIX[idx + 3] = 0; 
+                break;
+            case 1: // Bleu Foncé (Jet d'eau) -> Que du bleu
+                LED_MATRIX[idx + 0] = 0; 
+                LED_MATRIX[idx + 1] = 0; 
+                LED_MATRIX[idx + 2] = INTENSITE; 
+                LED_MATRIX[idx + 3] = 0; 
+                break;
+            case 2: // Bleu Clair/Cyan (Corps) -> Bleu + un peu de vert
+                LED_MATRIX[idx + 0] = INTENSITE / 2; 
+                LED_MATRIX[idx + 1] = 0; 
+                LED_MATRIX[idx + 2] = INTENSITE; 
+                LED_MATRIX[idx + 3] = 0; 
+                break;
+            case 3: // Gris (Ventre) -> Un peu de LED Blanche
+                LED_MATRIX[idx + 0] = 0; 
+                LED_MATRIX[idx + 1] = 0; 
+                LED_MATRIX[idx + 2] = 0; 
+                LED_MATRIX[idx + 3] = INTENSITE / 4; 
+                break;
+        }
+    }
+}
+
+// ------------------------------------------------------------------
 // main()
 // ------------------------------------------------------------------
 void main(void) {
@@ -187,42 +235,59 @@ void main(void) {
     TRISA  |= 0x3C;   // RA2,RA3,RA4,RA5 en entree
     ANSELA |= 0x3C;   // RA2..RA5 analogiques
 
-    // --- Configuration Boutons (Exemple: RB0 pour bp0, RB1 pour bp1) ---
-    // A adapter selon ton branchement !
+    // config boutons (Exemple: RB0 pour bp0, RB1 pour bp1) ---
     TRISB |= 0x03;    // RB0 et RB1 en entree
     ANSELB &= ~0x03;  // RB0 et RB1 en numerique (desactiver l'analogique)
-    // WPUB |= 0x03;  // Decommente si tu as besoin des pull-ups internes
 
-    // Configuration ADC
+    // config ADC
     ADCON1 = 0x00;
     ADCON0 = 0b10010000;
     
-    // Configuration du PORTB pour le bouton BP1 et BP0
+    // config PORTB pour le bouton BP1 et BP0
     TRISAbits.TRISA6 = 1;  
     ANSELAbits.ANSELA6 = 0;
     TRISAbits.TRISA7 = 1;  
     ANSELAbits.ANSELA7 = 0;
     
-
-
-    __delay_ms(100);   // laisse l ADC se stabiliser
+    __delay_ms(100);   // laisse ADC se stabiliser
 
     char therm;
-    char mode = 0; // 0 = Classique, 1 = Dégradé
+    char mode = 0; // 0 = Classique, 1 = Dégradé, 2 = Baleine
 
     while (1) {
-        // --- Lecture des boutons (Anti-rebond simple) ---
-        // On suppose que le bouton relie la broche a GND (actif a 0)
-        // On verifie si le bouton est à 0 (appuyé)
-        if (PORTAbits.RA6 == 0) { 
+        // --- Lecture des boutons ---
+        char btn0_appuye = (PORTAbits.RA6 == 0);
+        char btn1_appuye = (PORTAbits.RA7 == 0);
+
+        // Priorité 1 : Les deux boutons appuyés en même temps
+        if (btn0_appuye && btn1_appuye) {
             __delay_ms(20); // Anti-rebond
-            if (PORTAbits.RA6 == 0) mode = 1; // bp0 -> Mode dégradé
+            if ((PORTAbits.RA6 == 0) && (PORTAbits.RA7 == 0)) {
+                mode = 2; // Mode Baleine
+            }
+        } 
+        // Priorité 2 : Bouton 0 seul (Mode Dégradé)
+        else if (btn0_appuye) { 
+            __delay_ms(20); 
+            if (PORTAbits.RA6 == 0) mode = 1; 
+        }
+        // Priorité 3 : Bouton 1 seul (Mode Classique)
+        else if (btn1_appuye) { 
+            __delay_ms(20);
+            if (PORTAbits.RA7 == 0) mode = 0; 
         }
 
-        if (PORTAbits.RA7 == 0) { 
-            __delay_ms(20);
-            if (PORTAbits.RA7 == 0) mode = 0; // bp1 -> Mode classique
+        // --- AFFICHAGE SELON LE MODE ---
+
+        if (mode == 2) {
+            // Affichage de la baleine en image fixe
+            draw_whale();
+            TX_64LEDS();
+            __delay_ms(50); // Petit délai pour ne pas saturer le microcontrôleur
+            continue;       // Repart directement au début du while(1) sans lire l'ADC
         }
+
+        // --- Si on n'est pas en mode Baleine, on lit l'audio (Mode 0 ou 1) ---
 
         // --- ENV1 -> lignes 0 et 1 ---
         select_channel(CH_ENV1);
