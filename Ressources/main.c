@@ -158,7 +158,7 @@ void fill_row_gradient(unsigned char row, char therm) {
         unsigned int idx = (unsigned int)(row * 8 + col) * 4;
 
         if (therm & (1 << col)) {
-            // Dégradé basé sur la position de la LED (colonne 0 à 7)
+            // Degrade base sur la position de la LED (colonne 0 à 7)
             if (col < 2) {
                 // Base : VERT (Leds 0 et 1)
                 LED_MATRIX[idx + 0] = INTENSITE; // G
@@ -166,13 +166,13 @@ void fill_row_gradient(unsigned char row, char therm) {
                 LED_MATRIX[idx + 2] = 0;         // B
                 LED_MATRIX[idx + 3] = 0;         // W
             } else if (col < 4) {
-                // Montée : JAUNE (Leds 2 et 3) - Mélange Vert + Rouge
+                // Montée : JAUNE (Leds 2 et 3)
                 LED_MATRIX[idx + 0] = INTENSITE;
                 LED_MATRIX[idx + 1] = INTENSITE;
                 LED_MATRIX[idx + 2] = 0;
                 LED_MATRIX[idx + 3] = 0;
             } else if (col < 6) {
-                // Fort : ORANGE (Leds 4 et 5) - Moins de Vert, plein de Rouge
+                // Fort : ORANGE (Leds 4 et 5)
                 LED_MATRIX[idx + 0] = INTENSITE / 3; 
                 LED_MATRIX[idx + 1] = INTENSITE;
                 LED_MATRIX[idx + 2] = 0;
@@ -196,14 +196,14 @@ void fill_row_gradient(unsigned char row, char therm) {
 
 // PIXEL ART : La Baleine
 const char image_baleine[64] = {
-    0, 1, 0, 1, 0, 0, 0, 0,  // Ligne 0 (haut)
-    1, 0, 1, 0, 1, 0, 0, 0,  // Ligne 1
-    0, 0, 1, 0, 0, 0, 0, 0,  // Ligne 2
-    0, 2, 2, 2, 0, 0, 2, 0,  // Ligne 3
-    2, 2, 0, 2, 2, 0, 2, 2,  // Ligne 4 (œil : 0 au milieu)
-    3, 3, 2, 2, 2, 0, 2, 0,  // Ligne 5
-    3, 3, 3, 2, 2, 2, 2, 0,  // Ligne 6
-    0, 3, 3, 3, 2, 2, 0, 0   // Ligne 7 (bas)
+    0, 1, 0, 1, 0, 0, 0, 0,  // ligne 0 (haut)
+    1, 0, 1, 0, 1, 0, 0, 0,  // ligne 1
+    0, 0, 1, 0, 0, 0, 0, 0,  // ligne 2
+    0, 2, 2, 2, 0, 0, 2, 0,  // ligne 3
+    2, 2, 0, 2, 2, 0, 2, 2,  // ligne 4 (œil : 0 au milieu)
+    3, 3, 2, 2, 2, 0, 2, 0,  // ligne 5
+    3, 3, 3, 2, 2, 2, 2, 0,  // ligne 6
+    0, 3, 3, 3, 2, 2, 0, 0   // ligne 7 (bas)
 };
 
 void draw_whale(void) {
@@ -211,25 +211,25 @@ void draw_whale(void) {
         int idx = i * 4; // 4 octets par LED (G, R, B, W)
         
         switch (image_baleine[i]) {
-            case 0: // Eteint : oeil noir
+            case 0: // eteint : oeil noir
                 LED_MATRIX[idx + 0] = 0; 
                 LED_MATRIX[idx + 1] = 0; 
                 LED_MATRIX[idx + 2] = 0; 
                 LED_MATRIX[idx + 3] = 0; 
                 break;
-            case 1: // Bleu Foncé (Jet d'eau) -> Que du bleu
+            case 1: // bleu Fonce (Jet d'eau)
                 LED_MATRIX[idx + 0] = 0; 
                 LED_MATRIX[idx + 1] = 0; 
                 LED_MATRIX[idx + 2] = INTENSITE; 
                 LED_MATRIX[idx + 3] = 0; 
                 break;
-            case 2: // Bleu Clair/Cyan (Corps) -> Bleu + un peu de vert
+            case 2: // bleu Clair (corps)
                 LED_MATRIX[idx + 0] = INTENSITE / 2; 
                 LED_MATRIX[idx + 1] = 0; 
                 LED_MATRIX[idx + 2] = INTENSITE; 
                 LED_MATRIX[idx + 3] = 0; 
                 break;
-            case 3: // Gris (Ventre) -> Un peu de LED Blanche
+            case 3: // gris (ventre)
                 LED_MATRIX[idx + 0] = 0; 
                 LED_MATRIX[idx + 1] = 0; 
                 LED_MATRIX[idx + 2] = 0; 
