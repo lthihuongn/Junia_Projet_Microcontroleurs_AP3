@@ -12,7 +12,7 @@
 
 #define _XTAL_FREQ 64000000
 
-// Masques LEDs (debug, port C)
+// Masques LEDs test
 #define MASK_LED0 0x01
 #define MASK_LED1 0x02
 #define MASK_LED2 0x04
