@@ -62,21 +62,17 @@ extern void READ_1BYTE(void);
 volatile char        LED_MATRIX[256];
 volatile const char *pC = LED_MATRIX;
 
-// ------------------------------------------------------------------
 // select_channel() : selectionne le canal ADC
-// ------------------------------------------------------------------
 void select_channel(char channel) {
     ADPCH = channel;
-    __delay_ms(2);            // laisse le temps au canal de se stabiliser
+    __delay_ms(2);            // laisse le canal se stabiliser
 }
 
-// ------------------------------------------------------------------
-// ad_read_max() : echantillonne 200 fois et garde le maximum
-// ------------------------------------------------------------------
+//ad_read_max() : echantillonne 200 fois et garde le maximum
 char ad_read_max(void) {
     unsigned char max_val = 0;
     for (int i = 0; i < 200; i++) {
-        ADCON0 |= 0x01;            // ADGO = bit 0 (PIC18F25K40)
+        ADCON0 |= 0x01;            // ADGO = bit 0
         while (ADCON0 & 0x01) {}  // attend fin de conversion
 
         unsigned char v = (unsigned char)ADRESH;
@@ -88,32 +84,53 @@ char ad_read_max(void) {
     return (char)max_val;
 }
 
-// ------------------------------------------------------------------
-// get_thermometre() : Calcule le nombre de LEDs a allumer (0..8)
-// ------------------------------------------------------------------
-#define SEUIL_REPOS   105   // valeur ADC au repos (a ajuster si besoin)
-#define DIVISEUR_SENS  15   // plus petit = plus sensible
+
+// get_thermometre() : Calcule le nombre de LEDs à allumer (de 0 à 8)
+// Convertit l'amplitude audio brute en un masque binaire.
+#define SEUIL_REPOS   105   // Valeur ADC lue dans le silence total (bruit de fond)
+#define DIVISEUR_SENS  15   // Reglage de la sensibilité (plus la valeur est petite, plus ça monte vite)
 
 char get_thermometre(char adc_val) {
+    // On force la valeur en "non signé" (0 à 255) pour éviter les bugs de bits de signe
     unsigned char uval = (unsigned char)adc_val;
+    // On la convertit en entier (int)
     int val = (int)uval;
 
+    // suppression du bruit de fond (calibrage du point 0)
+    // On calcule la vraie puissance du son en retirant la tension de repos
     int amplitude = val - SEUIL_REPOS;
+    
+    // si le résultat est négatif (bruit électrique parasite), on force à 0
+    // Cela garantit que les LEDs restent éteintes quand il n'y a pas de musique
     if (amplitude < 0) amplitude = 0;
 
+    // mise à l'échelle (Mapping de l'amplitude vers 8 LEDs)
+    // On multiplie par 8 (le nombre de LEDs par ligne) puis on divise par notre sensibilité
     int niveau = (amplitude * 8) / DIVISEUR_SENS;
+    
+    // même si le son est extrêmement fort, 
+    // on ne doit pas essayer d'allumer plus de 8 LEDs
     if (niveau > 8) niveau = 8;
 
+    // masque binaire (format "thermomètre")
+    // Initialisation à 00000000 en binaire (toutes les LEDs sont éteintes)
     char code = 0;
+    
+    // On boucle autant de fois qu'il y a de LEDs à allumer
     for (char i = 0; i < niveau; i++) {
+        // Opération bit à bit : 
+        // (code << 1) décale tous les bits d'un cran vers la gauche
+        // | 0x01 ajoute un "1" tout à droite
+        // Exemple : 00000000 -> 00000001 -> 00000011 -> 00000111...
         code = (char)((code << 1) | 0x01);
     }
+    
+    // On renvoie l'octet final (ex: 00001111 si 4 LEDs doivent s'allumer)
     return code;
 }
 
-// ------------------------------------------------------------------
-// fill_row() : Mode Classique
-// ------------------------------------------------------------------
+
+// Mode Classique
 void fill_row(unsigned char row, char therm,
               char R, char G, char B, char W) {
     unsigned char col;
@@ -121,8 +138,8 @@ void fill_row(unsigned char row, char therm,
         unsigned int idx = (unsigned int)(row * 8 + col) * 4;
 
         if (therm & (1 << col)) {
-            LED_MATRIX[idx + 0] = G;  // Vert en premier (SK6812)
-            LED_MATRIX[idx + 1] = R;  // Rouge en second
+            LED_MATRIX[idx + 0] = G;
+            LED_MATRIX[idx + 1] = R;
             LED_MATRIX[idx + 2] = B;
             LED_MATRIX[idx + 3] = W;
         } else {
@@ -134,9 +151,7 @@ void fill_row(unsigned char row, char therm,
     }
 }
 
-// ------------------------------------------------------------------
-// fill_row_gradient() : Mode Dégradé (Vert -> Jaune -> Orange -> Rouge)
-// ------------------------------------------------------------------
+// mode Degrade (Vert - Jaune - Orange - Rouge)
 void fill_row_gradient(unsigned char row, char therm) {
     unsigned char col;
     for (col = 0; col < 8; col++) {
@@ -179,10 +194,7 @@ void fill_row_gradient(unsigned char row, char therm) {
     }
 }
 
-// ------------------------------------------------------------------
 // PIXEL ART : La Baleine
-// Codes couleurs : 0=Eteint/Noir, 1=Bleu Foncé, 2=Bleu Clair, 3=Gris
-// ------------------------------------------------------------------
 const char image_baleine[64] = {
     0, 1, 0, 1, 0, 0, 0, 0,  // Ligne 0 (haut)
     1, 0, 1, 0, 1, 0, 0, 0,  // Ligne 1
@@ -199,7 +211,7 @@ void draw_whale(void) {
         int idx = i * 4; // 4 octets par LED (G, R, B, W)
         
         switch (image_baleine[i]) {
-            case 0: // Eteint (ou l'œil noir)
+            case 0: // Eteint : oeil noir
                 LED_MATRIX[idx + 0] = 0; 
                 LED_MATRIX[idx + 1] = 0; 
                 LED_MATRIX[idx + 2] = 0; 
@@ -227,17 +239,10 @@ void draw_whale(void) {
     }
 }
 
-// ------------------------------------------------------------------
-// main()
-// ------------------------------------------------------------------
 void main(void) {
     // RA2..RA5 en entrees analogiques
     TRISA  |= 0x3C;   // RA2,RA3,RA4,RA5 en entree
     ANSELA |= 0x3C;   // RA2..RA5 analogiques
-
-    // config boutons (Exemple: RB0 pour bp0, RB1 pour bp1) ---
-    TRISB |= 0x03;    // RB0 et RB1 en entree
-    ANSELB &= ~0x03;  // RB0 et RB1 en numerique (desactiver l'analogique)
 
     // config ADC
     ADCON1 = 0x00;
@@ -255,39 +260,39 @@ void main(void) {
     char mode = 0; // 0 = Classique, 1 = Dégradé, 2 = Baleine
 
     while (1) {
-        // --- Lecture des boutons ---
+        //lecture des boutons
         char btn0_appuye = (PORTAbits.RA6 == 0);
         char btn1_appuye = (PORTAbits.RA7 == 0);
 
-        // Priorité 1 : Les deux boutons appuyés en même temps
+        // Priorité 1 : deux boutons appuyés
         if (btn0_appuye && btn1_appuye) {
             __delay_ms(20); // Anti-rebond
             if ((PORTAbits.RA6 == 0) && (PORTAbits.RA7 == 0)) {
                 mode = 2; // Mode Baleine
             }
         } 
-        // Priorité 2 : Bouton 0 seul (Mode Dégradé)
+        // Priorité 2 : Bouton BP0 (Dégradé)
         else if (btn0_appuye) { 
             __delay_ms(20); 
             if (PORTAbits.RA6 == 0) mode = 1; 
         }
-        // Priorité 3 : Bouton 1 seul (Mode Classique)
+        // Priorité 3 : Bouton BP1 (Classique)
         else if (btn1_appuye) { 
             __delay_ms(20);
             if (PORTAbits.RA7 == 0) mode = 0; 
         }
 
-        // --- AFFICHAGE SELON LE MODE ---
+        //AFFICHAGE SELON LE MODE
 
         if (mode == 2) {
             // Affichage de la baleine en image fixe
             draw_whale();
             TX_64LEDS();
-            __delay_ms(50); // Petit délai pour ne pas saturer le microcontrôleur
+            __delay_ms(50);
             continue;       // Repart directement au début du while(1) sans lire l'ADC
         }
 
-        // --- Si on n'est pas en mode Baleine, on lit l'audio (Mode 0 ou 1) ---
+        // si on n'est pas en mode baleine, on lit l'audio (Mode 0 ou 1)
 
         // --- ENV1 -> lignes 0 et 1 ---
         select_channel(CH_ENV1);
