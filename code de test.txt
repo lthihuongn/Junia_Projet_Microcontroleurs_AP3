@@ -1,0 +1,46 @@
+code de test 
+ LED :
+
+while(1) {
+    LATC |= MASK_LED1;   // Allume la LED1
+    __delay_ms(500);     // Attend 500 ms
+    LATC &= ~MASK_LED1;  // Éteint la LED1
+    __delay_ms(500);     // Attend 500 ms
+}
+
+
+
+boutons 
+void main(void) {
+    /* Configuration des entrÃ©es / sorties */
+    // TODO
+
+    /* Corps du programme */
+    // TODO
+    /* Configuration des entrées / sorties */
+    TRISCbits.TRISC0 = 0;
+    TRISCbits.TRISC1 = 0;
+    TRISCbits.TRISC2 = 0;
+    
+    // Configuration du PORTB pour le bouton BP1
+    TRISAbits.TRISA6 = 1;  
+    ANSELAbits.ANSELA6 = 0;
+    
+    char value_s1;
+    
+    while(1){
+        // Lecture de l'état du bouton en appliquant le masque
+        LATCbits.LATC2 = 1;
+        
+        // Si le résultat est différent de 0, cela signifie que le bit du bouton est à 1
+        if (PORTAbits.RA6) {
+            LATCbits.LATC1 = 1;  // On allume la LED1
+        }else{
+            LATCbits.LATC1 = 0; // Sinon, on l'éteint
+            LATCbits.LATC3 = 1;
+        } 
+        
+    }
+    
+    return;
+}
